@@ -67,8 +67,6 @@
         },
 
         componentWillReceiveProps: function(nextProps) {
-          console.log('willReceiveProps', nextProps);
-          console.log('state', this.state);
           if (!this.state.focused) {
             this.setState({
               currentValue: nextProps.value
@@ -205,6 +203,18 @@
           }
         },
 
+        componentDidMount: function() {
+          window.addEventListener('click', function(e) {
+            this.setState({
+              showModal: false
+            });
+          }.bind(this));
+        },
+
+        cancelClick: function(e) {
+          e.stopPropagation();
+        },
+
         getInitialState: function() {
           return {
             showModal: false
@@ -250,13 +260,22 @@
             }.bind(this);
 
             var changeHour = function(e) {
-              this.props.onChange({ value: TimePicker.stringify({ hour: e.target.value, minute: parsed.minute, meridian: parsed.meridian }) });
+              var h = +e.target.value;
+              if (!isNaN(h) && h >= 1 && h <= 12) {
+                this.props.onChange({ value: TimePicker.stringify({ hour: h, minute: parsed.minute, meridian: parsed.meridian }) });
+              }
             }.bind(this);
             var changeMinute = function(e) {
-              this.props.onChange({ value: TimePicker.stringify({ hour: parsed.hour, minute: e.target.value, meridian: parsed.meridian }) });
+              var m = +e.target.value;
+              if (!isNaN(m) && m >= 0 && m <= 59) {
+                this.props.onChange({ value: TimePicker.stringify({ hour: parsed.hour, minute: m, meridian: parsed.meridian }) });
+              }
             }.bind(this);
             var changeMeridian = function(e) {
-              this.props.onChange({ value: TimePicker.stringify({ hour: parsed.hour, minute: parsed.minute, meridian: e.target.value }) });
+              var meridian = e.target.value.toLowerCase();
+              if (meridian == 'am' || meridian == 'pm') {
+                this.props.onChange({ value: TimePicker.stringify({ hour: parsed.hour, minute: parsed.minute, meridian: e.target.value }) });
+              }
             }.bind(this);
 
             return <div style={{left: x, top: y, position: 'absolute', display: 'block', padding: 5}} className="dropdown-menu">
@@ -264,7 +283,7 @@
                 <tr>
                   <td style={tdstyle} onClick={change(+60)}><i className="glyphicon glyphicon-chevron-up"/></td>
                   <td/>
-                  <td style={tdstyle} onClick={change(+1)}><i className="glyphicon glyphicon-chevron-up"/></td>
+                  <td style={tdstyle} onClick={change(+15)}><i className="glyphicon glyphicon-chevron-up"/></td>
                   <td/>
                   <td style={tdstyle} onClick={change(+12*60)}><i className="glyphicon glyphicon-chevron-up"/></td>
                 </tr>
@@ -278,7 +297,7 @@
                 <tr>
                   <td style={tdstyle} onClick={change(-60)}><i className="glyphicon glyphicon-chevron-down"/></td>
                   <td/>
-                  <td style={tdstyle} onClick={change(-1)}><i className="glyphicon glyphicon-chevron-down"/></td>
+                  <td style={tdstyle} onClick={change(-15)}><i className="glyphicon glyphicon-chevron-down"/></td>
                   <td/>
                   <td style={tdstyle} onClick={change(-12*60)}><i className="glyphicon glyphicon-chevron-down"/></td>
                 </tr>
@@ -288,8 +307,7 @@
         },
 
         render: function() {
-          console.log('current value', this.props.value);
-          return <div>
+          return <div onClick={this.cancelClick}>
             <div className="input-group" style={{width: 150}}>
               <AutoField ref="timepicker" type="text" onChange={this.handleChange} value={this.props.value} normalize={this.normalize} className="form-control"/>
               <span className="input-group-btn">
