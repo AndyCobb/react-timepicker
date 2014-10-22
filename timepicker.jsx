@@ -56,43 +56,38 @@ var DelayedField = React.createClass({
   }
 });
 
+// Modulo that handles negative numbers.
+function mod(n, m) {
+  var i = 0;
+
+  while (n + i*m < 0) {
+    i += 1;
+  }
+
+  while (n + i*m >= m) {
+    i -= 1;
+  }
+
+  return n + i*m;
+}
+
 var TimePicker = React.createClass({
   statics: {
-    // Convert a Date object (ex. new Date()) and convert it to
-    // a time object.
+    // Convert a Date object to an integer number of minutes.
     fromDate: function(d) {
-      var h   = d.getHours(),
-          m   = d.getMinutes();
-
-      return TimePicker.stringify({
-        hour: h % 12,
-        minute: m,
-        meridian: h > 12 ? 'PM' : 'AM'
-      });
+      return d.getHours() * 60 + d.getMinutes();
     },
 
-    // Convert a time object to an integer number of minutes.
-    toMinutes: function(d) {
-      var hour = d.hour % 12,
-          minute = d.minute,
-          meridian = d.meridian;
-
-      return hour*60 + minute + (meridian === 'PM' ? 12*60 : 0);
-    },
-
-    // Convert an integer number of minutes to a time object.
-    fromMinutes: function(m) {
+    // Convert an integer number of minutes into three strings:
+    // hours, minutes, meridian.
+    stringifyPieces: function(m) {
       var hour, minute, meridian;
 
-      while (m < 0) {
-        m += 24*60;
-      }
-
-      m = m % (24*60);
+      m = mod(m, 24*60);
 
       if (m >= 12*60) {
-        m        -= 12*60;
-        meridian  = 'PM';
+        m -= 12*60;
+        meridian = 'PM';
       } else {
         meridian = 'AM';
       }
@@ -104,49 +99,53 @@ var TimePicker = React.createClass({
         hour = 12;
       }
 
-      return {hour: hour, minute: minute, meridian: meridian};
-    },
-
-    // Convert a time object to a string.
-    stringify: function(d) {
-      var m = d.minute;
-
-      if (m < 10) {
-        m = '0' + m;
+      if (minute < 10) {
+        minute = '0' + minute;
       }
 
-      return d.hour + ':' + m + ' ' + d.meridian;
+      return [hour, minute, meridian];
     },
 
-    // Parse a string into a time object, or return null if it's invalid.
+    // Convert an integer number of minutes to a time string.
+    stringify: function(m) {
+      var pieces = TimePicker.stringifyPieces(m);
+
+      return pieces[0] + ':' + pieces[1] + ' ' + pieces[2];
+    },
+
+    // Parse a string into an integer number of minutes, or return null if
+    // it's invalid.
     parse: function(s) {
-      var parsed = s.match(/(\d+):(\d+)\s*(\w+)?/);
+      var parsed = s.match(/(\d+)\s*:\s*(\d+)\s*(\w+)?/);
 
       if (parsed) {
         var hour     = +parsed[1],
             minute   = +parsed[2],
-            meridian = parsed[3];
+            meridian = parsed[3],
+            result   = 0;
 
-        if (isNaN(hour))   hour   = 12;
-        if (isNaN(minute)) minute = 0;
-        if (hour > 12)     hour   = 12;
-        if (minute > 59)   minute = 59;
-        
-        switch (meridian && meridian.toLowerCase()) {
-        default:
-        case 'am':
-          meridian = 'AM';
-        break;
-        case 'pm':
-          meridian = 'PM';
-        break;
+        if (isNaN(hour) || hour > 12 || isNaN(minute) || minute > 59) {
+          return null;
         }
 
-        return {
-          hour: hour,
-          minute: minute,
-          meridian: meridian
-        };
+        if (hour === 12) {
+          hour = 0;
+        }
+        
+        switch (meridian && meridian.toLowerCase()) {
+        case 'am':
+        break;
+        case 'pm':
+          result += 12*60;
+        break;
+        default:
+          return null;
+        }
+
+        result += hour*60;
+        result += minute;
+
+        return result;
       }
 
       return null;
@@ -199,8 +198,9 @@ var TimePicker = React.createClass({
       var input   = this.refs.timepicker.getDOMNode(),
           x       = input.offsetLeft,
           y       = input.offsetTop + input.offsetHeight,
-          parsed  = TimePicker.parse(this.props.value),
-          minutes = TimePicker.toMinutes(parsed);
+          minutes = TimePicker.parse(this.props.value),
+          pieces  = TimePicker.stringifyPieces(minutes),
+          self    = this;
 
       var tdstyle = {
         'text-align': 'center',
@@ -216,30 +216,24 @@ var TimePicker = React.createClass({
 
       var change = function(amount) {
         return function() {
-          if (this.props.onChange) {
-            this.props.onChange({ value: TimePicker.stringify(TimePicker.fromMinutes(minutes + amount)) });
+          if (self.props.onChange) {
+            self.props.onChange({ value: TimePicker.stringify(minutes + amount) });
           }
-        }.bind(this);
-      }.bind(this);
+        };
+      };
 
       var changeHour = function(e) {
-        var h = +e.target.value;
-        if (!isNaN(h) && h >= 1 && h <= 12) {
-          this.props.onChange({ value: TimePicker.stringify({ hour: h, minute: parsed.minute, meridian: parsed.meridian }) });
-        }
-      }.bind(this);
+        var value = TimePicker.stringify(TimePicker.parse(e.target.value + ':' + pieces[1] + ' ' + pieces[2]));
+        self.props.onChange({ value: value });
+      };
       var changeMinute = function(e) {
-        var m = +e.target.value;
-        if (!isNaN(m) && m >= 0 && m <= 59) {
-          this.props.onChange({ value: TimePicker.stringify({ hour: parsed.hour, minute: m, meridian: parsed.meridian }) });
-        }
-      }.bind(this);
+        var value = TimePicker.stringify(TimePicker.parse(pieces[0] + ':' + e.target.value + ' ' + pieces[2]));
+        self.props.onChange({ value: value });
+      };
       var changeMeridian = function(e) {
-        var meridian = e.target.value.toLowerCase();
-        if (meridian == 'am' || meridian == 'pm') {
-          this.props.onChange({ value: TimePicker.stringify({ hour: parsed.hour, minute: parsed.minute, meridian: e.target.value }) });
-        }
-      }.bind(this);
+        var value = TimePicker.stringify(TimePicker.parse(pieces[0] + ':' + pieces[1] + ' ' + e.target.value));
+        self.props.onChange({ value: value });
+      };
 
       return <div style={{left: x, top: y, position: 'absolute', display: 'block', padding: 5}} className="dropdown-menu">
         <table>
@@ -251,11 +245,11 @@ var TimePicker = React.createClass({
             <td style={tdstyle} onClick={change(+12*60)}><i className="glyphicon glyphicon-chevron-up"/></td>
           </tr>
           <tr>
-            <td><DelayedField className="form-control" style={{width: 45, 'text-align': 'right'}} type="text" value={parsed.hour} onChange={changeHour}/></td>
+            <td><DelayedField className="form-control" style={{width: 45, 'text-align': 'right'}} type="text" value={pieces[0]} onChange={changeHour}/></td>
             <td style={{padding: 10, 'text-align': 'center'}}>:</td>
-            <td><DelayedField className="form-control" style={{width: 45, 'text-align': 'right'}} type="text" value={('0' + parsed.minute).slice(-2)} onChange={changeMinute}/></td>
+            <td><DelayedField className="form-control" style={{width: 45, 'text-align': 'right'}} type="text" value={pieces[1]} onChange={changeMinute}/></td>
             <td style={{padding: 10}}></td>
-            <td><DelayedField className="form-control" size="2" type="text" value={parsed.meridian} onChange={changeMeridian}/></td>
+            <td><DelayedField className="form-control" size="2" type="text" value={pieces[2]} onChange={changeMeridian}/></td>
           </tr>
           <tr>
             <td style={tdstyle} onClick={change(-60)}><i className="glyphicon glyphicon-chevron-down"/></td>
@@ -270,9 +264,11 @@ var TimePicker = React.createClass({
   },
 
   render: function() {
+    var displayValue = TimePicker.stringify(TimePicker.parse(this.props.value));
+
     return <div onClick={this.cancelClick}>
       <div className="input-group" style={{width: 150}}>
-        <DelayedField ref="timepicker" type="text" onChange={this.handleChange} value={this.props.value} normalize={this.normalize} className="form-control"/>
+        <DelayedField ref="timepicker" type="text" onChange={this.handleChange} value={displayValue} normalize={this.normalize} className="form-control"/>
         <span className="input-group-btn">
           <button className="btn btn-default" type="button" onClick={this.toggleModal}><i className="glyphicon glyphicon-time"/></button>
         </span>

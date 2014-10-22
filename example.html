@@ -60,7 +60,7 @@
       var Main = React.createClass({
         getInitialState: function() {
           return {
-            time: TimePicker.fromDate(new Date)
+            time: TimePicker.stringify(TimePicker.fromDate(new Date))
           };
         },
 
