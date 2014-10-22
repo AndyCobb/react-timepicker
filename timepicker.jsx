@@ -274,7 +274,7 @@ var TimePicker = React.createClass({
       self.props.onChange({ value: value });
     };
 
-    return <div style={{}} className="dropdown-menu">
+    return <div style={modalStyle} className="dropdown-menu">
       <table>
         <tr>
           <td style={arrowStyle} onClick={incrementTime(+60)}>
