@@ -33,6 +33,9 @@ var DelayedField = React.createClass({
   },
 
   handleFocus: function() {
+    setTimeout(function() {
+      this.getDOMNode().setSelectionRange(0, this.state.currentValue.length);
+    }.bind(this), 0); // Slight delay in the event loop allows it to focus without being clobbered.
     this.setState({
       focused: true
     });
@@ -42,17 +45,20 @@ var DelayedField = React.createClass({
     var currentValue = this.state.currentValue;
 
     this.setState({
-      currentValue: this.props.value,
-      focused:      false
+      focused: false
     });
 
     if (this.props.onChange) {
       this.props.onChange({target: {value: currentValue} });
+    } else {
+      this.setState({
+        currentValue: this.props.value
+      });
     }
   },
 
   render: function() {
-    return <input {...this.props} onChange={this.handleChange} value={this.state.currentValue} onBlur={this.handleBlur} onKeyUp={this.handleKeyUp}/>;
+    return <input {...this.props} onChange={this.handleChange} value={this.state.currentValue} onFocus={this.handleFocus} onBlur={this.handleBlur} onKeyUp={this.handleKeyUp}/>;
   }
 });
 
@@ -116,15 +122,19 @@ var TimePicker = React.createClass({
     // Parse a string into an integer number of minutes, or return null if
     // it's invalid.
     parse: function(s) {
-      var parsed = s.match(/(\d+)\s*:\s*(\d+)\s*(\w+)?/);
+      var parsed = s.match(/^\s*(\d+)\s*(:\s*(\d+))?\s*(am|pm)?\s*$/i);
 
       if (parsed) {
         var hour     = +parsed[1],
-            minute   = +parsed[2],
-            meridian = parsed[3],
+            minute   = +parsed[3],
+            meridian = parsed[4],
             result   = 0;
 
-        if (isNaN(hour) || hour > 12 || isNaN(minute) || minute > 59) {
+        if (isNaN(minute)) {
+          minute = 0;
+        }
+
+        if (isNaN(hour) || hour > 12 || minute > 59) {
           return null;
         }
 
@@ -135,11 +145,10 @@ var TimePicker = React.createClass({
         switch (meridian && meridian.toLowerCase()) {
         case 'am':
         break;
+        default:
         case 'pm':
           result += 12*60;
         break;
-        default:
-          return null;
         }
 
         result += hour*60;
@@ -155,11 +164,17 @@ var TimePicker = React.createClass({
   componentDidMount: function() {
     // Only clicks that were clicked outside of the modal will reach here,
     // because of cancelClick.
-    window.addEventListener('click', function(e) {
-      this.setState({
-        showModal: false
-      });
-    }.bind(this));
+    window.addEventListener('click', this.handleWindowClick);
+  },
+
+  componentWillUnmount: function() {
+    window.removeEventListener('click', this.handleWindowClick);
+  },
+
+  handleWindowClick: function() {
+    this.setState({
+      showModal: false
+    });
   },
 
   cancelClick: function(e) {
@@ -176,7 +191,7 @@ var TimePicker = React.createClass({
   handleChange: function(e) {
     var parsed = TimePicker.parse(e.target.value);
 
-    if (parsed) {
+    if (parsed !== null) {
       this.props.onChange({ value: TimePicker.stringify(parsed) });
     }
   },
@@ -235,7 +250,7 @@ var TimePicker = React.createClass({
         self.props.onChange({ value: value });
       };
 
-      return <div style={{left: x, top: y, position: 'absolute', display: 'block', padding: 5}} className="dropdown-menu">
+      return <div style={{left: x, top: y, position: 'absolute', display: 'block', padding: 5, 'background-color': 'white', width: '195px'}} className="dropdown-menu">
         <table>
           <tr>
             <td style={tdstyle} onClick={change(+60)}><i className="glyphicon glyphicon-chevron-up"/></td>
@@ -249,7 +264,7 @@ var TimePicker = React.createClass({
             <td style={{padding: 10, 'text-align': 'center'}}>:</td>
             <td><DelayedField className="form-control" style={{width: 45, 'text-align': 'right'}} type="text" value={pieces[1]} onChange={changeMinute}/></td>
             <td style={{padding: 10}}></td>
-            <td><DelayedField className="form-control" size="2" type="text" value={pieces[2]} onChange={changeMeridian}/></td>
+            <td><DelayedField className="form-control" size="3" type="text" value={pieces[2]} onChange={changeMeridian}/></td>
           </tr>
           <tr>
             <td style={tdstyle} onClick={change(-60)}><i className="glyphicon glyphicon-chevron-down"/></td>
@@ -266,11 +281,11 @@ var TimePicker = React.createClass({
   render: function() {
     var displayValue = TimePicker.stringify(TimePicker.parse(this.props.value));
 
-    return <div onClick={this.cancelClick}>
+    return <div onClick={this.cancelClick} style={{'position': 'relative'}}>
       <div className="input-group" style={{width: 150}}>
         <DelayedField ref="timepicker" type="text" onChange={this.handleChange} value={displayValue} normalize={this.normalize} className="form-control"/>
         <span className="input-group-btn">
-          <button className="btn btn-default" type="button" onClick={this.toggleModal}><i className="glyphicon glyphicon-time"/></button>
+          <button className="btn btn-default" type="button" onClick={this.toggleModal} style={{'font-size': 14}}><i className="glyphicon glyphicon-time"/></button>
         </span>
       </div>
       {this.renderModal()}
