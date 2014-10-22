@@ -2,13 +2,11 @@
 <html>
   <head>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
-    <link rel="stylesheet" href="bootstrap-timepicker.css">
   </head>
   <body>
     <div id="main"></div>
     <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
-    <script src="bootstrap-timepicker.js"></script>
     <script src="http://fb.me/react-with-addons-0.11.2.js"></script>
     <script src="http://fb.me/JSXTransformer-0.11.2.js"></script>
     <script>
@@ -106,7 +104,7 @@
           });
 
           if (this.props.onChange) {
-            this.props.onChange({ value: currentValue });
+            this.props.onChange({target: {value: currentValue} });
           }
         },
 
@@ -139,6 +137,10 @@
 
           fromMinutes: function(m) {
             var hour, minute, meridian;
+
+            while (m < 0) {
+              m += 24*60;
+            }
 
             m = m % (24*60);
 
@@ -210,7 +212,7 @@
         },
 
         handleChange: function(e) {
-          var parsed = TimePicker.parse(e.value);
+          var parsed = TimePicker.parse(e.target.value);
 
           if (parsed) {
             this.props.onChange({ value: TimePicker.stringify(parsed) });
@@ -267,11 +269,11 @@
                   <td style={tdstyle} onClick={change(+12*60)}><i className="glyphicon glyphicon-chevron-up"/></td>
                 </tr>
                 <tr>
-                  <td><input className="form-control" style={{width: 45, 'text-align': 'right'}} type="text" value={parsed.hour} onChange={changeHour}/></td>
+                  <td><AutoField className="form-control" style={{width: 45, 'text-align': 'right'}} type="text" value={parsed.hour} onChange={changeHour}/></td>
                   <td style={{padding: 10, 'text-align': 'center'}}>:</td>
-                  <td><input className="form-control" style={{width: 45, 'text-align': 'right'}} type="text" value={('0' + parsed.minute).slice(-2)} onChange={changeMinute}/></td>
+                  <td><AutoField className="form-control" style={{width: 45, 'text-align': 'right'}} type="text" value={('0' + parsed.minute).slice(-2)} onChange={changeMinute}/></td>
                   <td style={{padding: 10}}></td>
-                  <td><input className="form-control" size="2" type="text" value={parsed.meridian} onChange={changeMeridian}/></td>
+                  <td><AutoField className="form-control" size="2" type="text" value={parsed.meridian} onChange={changeMeridian}/></td>
                 </tr>
                 <tr>
                   <td style={tdstyle} onClick={change(-60)}><i className="glyphicon glyphicon-chevron-down"/></td>
