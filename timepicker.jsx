@@ -33,9 +33,10 @@ var DelayedField = React.createClass({
   },
 
   handleFocus: function() {
+    // Slight delay in the event loop allows it to focus without being clobbered
     setTimeout(function() {
       this.getDOMNode().setSelectionRange(0, this.state.currentValue.length);
-    }.bind(this), 0); // Slight delay in the event loop allows it to focus without being clobbered.
+    }.bind(this), 0);
     this.setState({
       focused: true
     });
@@ -58,7 +59,12 @@ var DelayedField = React.createClass({
   },
 
   render: function() {
-    return <input {...this.props} onChange={this.handleChange} value={this.state.currentValue} onFocus={this.handleFocus} onBlur={this.handleBlur} onKeyUp={this.handleKeyUp}/>;
+    return <input {...this.props}
+                  onChange={this.handleChange}
+                  value={this.state.currentValue}
+                  onFocus={this.handleFocus}
+                  onBlur={this.handleBlur}
+                  onKeyUp={this.handleKeyUp}/>;
   }
 });
 
@@ -196,12 +202,6 @@ var TimePicker = React.createClass({
     }
   },
 
-  normalize: function(s) {
-    var parsed = TimePicker.parse(s);
-
-    return parsed && TimePicker.stringify(parsed);
-  },
-
   toggleModal: function() {
     this.setState({
       showModal: !this.state.showModal
@@ -209,73 +209,120 @@ var TimePicker = React.createClass({
   },
 
   renderModal: function() {
-    if (this.state.showModal) {
-      var input   = this.refs.timepicker.getDOMNode(),
-          x       = input.offsetLeft,
-          y       = input.offsetTop + input.offsetHeight,
-          minutes = TimePicker.parse(this.props.value),
-          pieces  = TimePicker.stringifyPieces(minutes),
-          self    = this;
-
-      var tdstyle = {
-        'text-align': 'center',
-        'vertical-align': 'middle',
-        'cursor': 'pointer',
-        '-webkit-touch-callout': 'none',
-        '-webkit-user-select': 'none',
-        '-khtml-user-select': 'none',
-        '-moz-user-select': 'moz-none',
-        '-ms-user-select': 'none',
-        'user-select': 'none'
-      };
-
-      var change = function(amount) {
-        return function() {
-          if (self.props.onChange) {
-            self.props.onChange({ value: TimePicker.stringify(minutes + amount) });
-          }
-        };
-      };
-
-      var changeHour = function(e) {
-        var value = TimePicker.stringify(TimePicker.parse(e.target.value + ':' + pieces[1] + ' ' + pieces[2]));
-        self.props.onChange({ value: value });
-      };
-      var changeMinute = function(e) {
-        var value = TimePicker.stringify(TimePicker.parse(pieces[0] + ':' + e.target.value + ' ' + pieces[2]));
-        self.props.onChange({ value: value });
-      };
-      var changeMeridian = function(e) {
-        var value = TimePicker.stringify(TimePicker.parse(pieces[0] + ':' + pieces[1] + ' ' + e.target.value));
-        self.props.onChange({ value: value });
-      };
-
-      return <div style={{left: x, top: y, position: 'absolute', display: 'block', padding: 5, 'background-color': 'white', width: '195px'}} className="dropdown-menu">
-        <table>
-          <tr>
-            <td style={tdstyle} onClick={change(+60)}><i className="glyphicon glyphicon-chevron-up"/></td>
-            <td/>
-            <td style={tdstyle} onClick={change(+15)}><i className="glyphicon glyphicon-chevron-up"/></td>
-            <td/>
-            <td style={tdstyle} onClick={change(+12*60)}><i className="glyphicon glyphicon-chevron-up"/></td>
-          </tr>
-          <tr>
-            <td><DelayedField className="form-control" style={{width: 45, 'text-align': 'right'}} type="text" value={pieces[0]} onChange={changeHour}/></td>
-            <td style={{padding: 10, 'text-align': 'center'}}>:</td>
-            <td><DelayedField className="form-control" style={{width: 45, 'text-align': 'right'}} type="text" value={pieces[1]} onChange={changeMinute}/></td>
-            <td style={{padding: 10}}></td>
-            <td><DelayedField className="form-control" size="3" type="text" value={pieces[2]} onChange={changeMeridian}/></td>
-          </tr>
-          <tr>
-            <td style={tdstyle} onClick={change(-60)}><i className="glyphicon glyphicon-chevron-down"/></td>
-            <td/>
-            <td style={tdstyle} onClick={change(-15)}><i className="glyphicon glyphicon-chevron-down"/></td>
-            <td/>
-            <td style={tdstyle} onClick={change(-12*60)}><i className="glyphicon glyphicon-chevron-down"/></td>
-          </tr>
-        </table>
-      </div>;
+    if (!this.state.showModal) {
+      return;
     }
+
+    var input   = this.refs.timepicker.getDOMNode(),
+        x       = input.offsetLeft,
+        y       = input.offsetTop + input.offsetHeight,
+        minutes = TimePicker.parse(this.props.value),
+        pieces  = TimePicker.stringifyPieces(minutes),
+        self    = this;
+
+    var arrowStyle = {
+      'text-align':            'center',
+      'vertical-align':        'middle',
+      'cursor':                'pointer',
+      '-webkit-touch-callout': 'none',
+      '-webkit-user-select':   'none',
+      '-khtml-user-select':    'none',
+      '-moz-user-select':      'moz-none',
+      '-ms-user-select':       'none',
+      'user-select':           'none'
+    }, modalStyle = {
+      left:               x,
+      top:                y,
+      position:           'absolute',
+      display:            'block',
+      padding:            5,
+      'background-color': 'white',
+      width:              '195px'
+    }, inputStyle = {
+      width: 45,
+      'text-align': 'right'
+    };
+
+    var incrementTime = function(amount) {
+      return function() {
+        if (self.props.onChange) {
+          self.props.onChange({
+            value: TimePicker.stringify(minutes + amount)
+          });
+        }
+      };
+    };
+
+    var changeHour = function(e) {
+      var value = TimePicker.stringify(TimePicker.parse(
+        e.target.value + ':' + pieces[1] + ' ' + pieces[2]
+      ));
+      self.props.onChange({ value: value });
+    };
+
+    var changeMinute = function(e) {
+      var value = TimePicker.stringify(TimePicker.parse(
+        pieces[0] + ':' + e.target.value + ' ' + pieces[2]
+      ));
+      self.props.onChange({ value: value });
+    };
+
+    var changeMeridian = function(e) {
+      var value = TimePicker.stringify(TimePicker.parse(
+        pieces[0] + ':' + pieces[1] + ' ' + e.target.value
+      ));
+      self.props.onChange({ value: value });
+    };
+
+    return <div style={{}} className="dropdown-menu">
+      <table>
+        <tr>
+          <td style={arrowStyle} onClick={incrementTime(+60)}>
+            <i className="glyphicon glyphicon-chevron-up"/>
+          </td>
+          <td/>
+          <td style={arrowStyle} onClick={incrementTime(+15)}>
+            <i className="glyphicon glyphicon-chevron-up"/>
+          </td>
+          <td/>
+          <td style={arrowStyle} onClick={incrementTime(+12*60)}>
+            <i className="glyphicon glyphicon-chevron-up"/>
+          </td>
+        </tr>
+        <tr>
+          <td><DelayedField className="form-control"
+                           style={inputStyle}
+                           type="text"
+                           value={pieces[0]}
+                           onChange={changeHour}/></td>
+          <td style={{padding: 10, 'text-align': 'center'}}>:</td>
+          <td><DelayedField className="form-control"
+                            style={inputStyle}
+                            type="text"
+                            value={pieces[1]}
+                            onChange={changeMinute}/></td>
+          <td style={{padding: 10}}></td>
+          <td><DelayedField className="form-control"
+                            size="3"
+                            type="text"
+                            value={pieces[2]}
+                            onChange={changeMeridian}/></td>
+        </tr>
+        <tr>
+          <td style={arrowStyle} onClick={incrementTime(-60)}>
+            <i className="glyphicon glyphicon-chevron-down"/>
+          </td>
+          <td/>
+          <td style={arrowStyle} onClick={incrementTime(-15)}>
+            <i className="glyphicon glyphicon-chevron-down"/>
+          </td>
+          <td/>
+          <td style={arrowStyle} onClick={incrementTime(-12*60)}>
+            <i className="glyphicon glyphicon-chevron-down"/>
+          </td>
+        </tr>
+      </table>
+    </div>;
   },
 
   render: function() {
@@ -283,9 +330,19 @@ var TimePicker = React.createClass({
 
     return <div onClick={this.cancelClick} style={{'position': 'relative'}}>
       <div className="input-group" style={{width: 150}}>
-        <DelayedField ref="timepicker" type="text" onChange={this.handleChange} value={displayValue} normalize={this.normalize} className="form-control"/>
+        <DelayedField ref="timepicker"
+                      type="text"
+                      onChange={this.handleChange}
+                      value={displayValue}
+                      className="form-control"
+                      style={{'width': 110}}/>
         <span className="input-group-btn">
-          <button className="btn btn-default" type="button" onClick={this.toggleModal} style={{'font-size': 14}}><i className="glyphicon glyphicon-time"/></button>
+          <button className="btn btn-default"
+                  type="button"
+                  onClick={this.toggleModal}
+                  style={{'font-size': 14}}>
+            <i className="glyphicon glyphicon-time"/>
+          </button>
         </span>
       </div>
       {this.renderModal()}
