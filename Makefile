@@ -5,5 +5,5 @@ timepicker.js: timepicker.jsx
 	jsx <$^ >$@
 
 timepicker.js.min: timepicker.js
-	uglifyjs --preamble "/* From github.com/alecrn/react-timepicker */" <$^ >$@
+	uglifyjs --preamble "/* From github.com/balihoo-acobb/react-timepicker */" <$^ >$@
 
