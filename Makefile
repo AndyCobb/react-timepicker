@@ -1,9 +1,9 @@
 
-all: timepicker.js timepicker.js.min
+all: react-timepicker.js react-timepicker.min.js
 
-timepicker.js: timepicker.jsx
+react-timepicker.js: timepicker.jsx
 	jsx <$^ >$@
 
-timepicker.js.min: timepicker.js
+react-timepicker.min.js: react-timepicker.js
 	uglifyjs --preamble "/* From github.com/balihoo-acobb/react-timepicker */" <$^ >$@
 

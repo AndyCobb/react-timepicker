@@ -326,7 +326,8 @@ var TimePicker = React.createClass({
   },
 
   render: function() {
-    var displayValue = TimePicker.stringify(TimePicker.parse(this.props.value));
+    var displayValue = this.props.value && this.props.value.length ? 
+      TimePicker.stringify(TimePicker.parse(this.props.value)) : '';
 
     return <div onClick={this.cancelClick} style={{'position': 'relative'}}>
       <div className="input-group" style={{width: 150}}>
