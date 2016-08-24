@@ -27,7 +27,7 @@ var DelayedField = React.createClass({
 
   handleKeyUp: function(e) {
     if (e.keyCode === 13) {
-      this.getDOMNode().blur();
+      ReactDOM.findDOMNode(this).blur();
       this.handleBlur();
     }
   },
@@ -35,7 +35,7 @@ var DelayedField = React.createClass({
   handleFocus: function() {
     // Slight delay in the event loop allows it to focus without being clobbered
     setTimeout(function() {
-      this.getDOMNode().setSelectionRange(0, this.state.currentValue.length);
+      ReactDOM.findDOMNode(this).setSelectionRange(0, this.state.currentValue.length);
     }.bind(this), 0);
     this.setState({
       focused: true
@@ -171,6 +171,10 @@ var TimePicker = React.createClass({
     // Only clicks that were clicked outside of the modal will reach here,
     // because of cancelClick.
     window.addEventListener('click', this.handleWindowClick);
+    this.updatePieces();
+  },
+  componentDidUpdate: function() {
+    this.updatePieces();
   },
 
   componentWillUnmount: function() {
@@ -207,40 +211,50 @@ var TimePicker = React.createClass({
       showModal: !this.state.showModal
     });
   },
+  
+  updatePieces: function() {
+    var input   = ReactDOM.findDOMNode(this.refs.timepicker),
+        x = input.offsetLeft,
+        y = input.offsetTop + input.offsetHeight;
+    
+    if (x != this.state.x || y != this.state.y) {
+      this.setState({
+        x:x,
+        y:y
+      });
+    }
+  },
 
   renderModal: function() {
     if (!this.state.showModal) {
       return;
     }
 
-    var input   = this.refs.timepicker.getDOMNode(),
-        x       = input.offsetLeft,
-        y       = input.offsetTop + input.offsetHeight,
-        minutes = TimePicker.parse(this.props.value),
-        pieces  = TimePicker.stringifyPieces(minutes),
-        self    = this;
+    var minutes = TimePicker.parse(this.props.value),
+      pieces  = TimePicker.stringifyPieces(minutes),
+      self = this;
 
     var arrowStyle = {
-      'text-align':            'center',
-      'vertical-align':        'middle',
-      'cursor':                'pointer',
-      '-webkit-touch-callout': 'none',
-      '-webkit-user-select':   'none',
-      '-khtml-user-select':    'none',
-      '-moz-user-select':      'moz-none',
-      '-ms-user-select':       'none',
-      'user-select':           'none'
+      textAlign:          'center',
+      verticalAlign:      'middle',
+      cursor:             'pointer',
+      WebkitTouchCallout: 'none',
+      WebkitUserSelect:   'none',
+      KhtmlUserSelect:    'none',
+      MozUserWelect:      'moz-none',
+      msUserWelect:       'none',
+      userWelect:         'none'
     }, modalStyle = {
-      left:               x,
-      top:                y,
+      left:               this.state.x,
+      top:                this.state.y,
       position:           'absolute',
       display:            'block',
       padding:            5,
-      'background-color': 'white',
-      width:              '195px'
+      backgroundColor:   'white',
+      width:             '195px'
     }, inputStyle = {
       width: 45,
-      'text-align': 'right'
+      textAlign: 'right'
     };
 
     var incrementTime = function(amount) {
@@ -276,51 +290,53 @@ var TimePicker = React.createClass({
 
     return <div style={modalStyle} className="dropdown-menu">
       <table>
-        <tr>
-          <td style={arrowStyle} onClick={incrementTime(+60)}>
-            <i className="glyphicon glyphicon-chevron-up"/>
-          </td>
-          <td/>
-          <td style={arrowStyle} onClick={incrementTime(+15)}>
-            <i className="glyphicon glyphicon-chevron-up"/>
-          </td>
-          <td/>
-          <td style={arrowStyle} onClick={incrementTime(+12*60)}>
-            <i className="glyphicon glyphicon-chevron-up"/>
-          </td>
-        </tr>
-        <tr>
-          <td><DelayedField className="form-control"
-                           style={inputStyle}
-                           type="text"
-                           value={pieces[0]}
-                           onChange={changeHour}/></td>
-          <td style={{padding: 10, 'text-align': 'center'}}>:</td>
-          <td><DelayedField className="form-control"
-                            style={inputStyle}
-                            type="text"
-                            value={pieces[1]}
-                            onChange={changeMinute}/></td>
-          <td style={{padding: 10}}></td>
-          <td><DelayedField className="form-control"
-                            style={inputStyle}
-                            type="text"
-                            value={pieces[2]}
-                            onChange={changeMeridian}/></td>
-        </tr>
-        <tr>
-          <td style={arrowStyle} onClick={incrementTime(-60)}>
-            <i className="glyphicon glyphicon-chevron-down"/>
-          </td>
-          <td/>
-          <td style={arrowStyle} onClick={incrementTime(-15)}>
-            <i className="glyphicon glyphicon-chevron-down"/>
-          </td>
-          <td/>
-          <td style={arrowStyle} onClick={incrementTime(-12*60)}>
-            <i className="glyphicon glyphicon-chevron-down"/>
-          </td>
-        </tr>
+        <tbody>
+          <tr>
+            <td style={arrowStyle} onClick={incrementTime(+60)}>
+              <i className="glyphicon glyphicon-chevron-up"/>
+            </td>
+            <td/>
+            <td style={arrowStyle} onClick={incrementTime(+15)}>
+              <i className="glyphicon glyphicon-chevron-up"/>
+            </td>
+            <td/>
+            <td style={arrowStyle} onClick={incrementTime(+12*60)}>
+              <i className="glyphicon glyphicon-chevron-up"/>
+            </td>
+          </tr>
+          <tr>
+            <td><DelayedField className="form-control"
+                             style={inputStyle}
+                             type="text"
+                             value={pieces[0]}
+                             onChange={changeHour}/></td>
+            <td style={{padding: 10, 'textAlign': 'center'}}>:</td>
+            <td><DelayedField className="form-control"
+                              style={inputStyle}
+                              type="text"
+                              value={pieces[1]}
+                              onChange={changeMinute}/></td>
+            <td style={{padding: 10}}></td>
+            <td><DelayedField className="form-control"
+                              style={inputStyle}
+                              type="text"
+                              value={pieces[2]}
+                              onChange={changeMeridian}/></td>
+          </tr>
+          <tr>
+            <td style={arrowStyle} onClick={incrementTime(-60)}>
+              <i className="glyphicon glyphicon-chevron-down"/>
+            </td>
+            <td/>
+            <td style={arrowStyle} onClick={incrementTime(-15)}>
+              <i className="glyphicon glyphicon-chevron-down"/>
+            </td>
+            <td/>
+            <td style={arrowStyle} onClick={incrementTime(-12*60)}>
+              <i className="glyphicon glyphicon-chevron-down"/>
+            </td>
+          </tr>
+        </tbody>
       </table>
     </div>;
   },
@@ -328,20 +344,27 @@ var TimePicker = React.createClass({
   render: function() {
     var displayValue = this.props.value && this.props.value.length ? 
       TimePicker.stringify(TimePicker.parse(this.props.value)) : '';
+    
+    var buttonClass = "btn btn-default fb-field-interactive";
+    if (this.props.disabled) {
+      buttonClass += " fb-field-disabled";
+    }
 
     return <div onClick={this.cancelClick} style={{'position': 'relative'}}>
       <div className="input-group" style={{width: 150}}>
+        
         <DelayedField ref="timepicker"
                       type="text"
                       onChange={this.handleChange}
                       value={displayValue}
+                      disabled={this.props.disabled}
                       className="form-control"
                       style={{'width': 110}}/>
         <span className="input-group-btn">
-          <button className="btn btn-default"
+          <button className={buttonClass}
                   type="button"
                   onClick={this.toggleModal}
-                  style={{'font-size': 14}}>
+                  style={{'fontSize': 14}}>
             <i className="glyphicon glyphicon-time"/>
           </button>
         </span>
